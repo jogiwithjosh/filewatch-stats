@@ -12,12 +12,13 @@ type FileWatcher interface {
 }
 
 type FileWatcherImpl struct {
-	directory string
-	watcherr  *watcher.Watcher
-	fw        FileWriter
+	directory   string
+	concurrency int
+	watcherr    *watcher.Watcher
+	fw          FileWriter
 }
 
-func NewFileWatcher(directory string, recursive bool, fw FileWriter) (FileWatcher, error) {
+func NewFileWatcher(directory string, concurrency int, recursive bool, fw FileWriter) (FileWatcher, error) {
 	watcherr := watcher.New()
 
 	watcherr.FilterOps(watcher.Create, watcher.Write)
@@ -32,33 +33,32 @@ func NewFileWatcher(directory string, recursive bool, fw FileWriter) (FileWatche
 	}
 
 	return &FileWatcherImpl{
-		watcherr:  watcherr,
-		directory: directory,
-		fw:        fw,
+		watcherr:    watcherr,
+		directory:   directory,
+		concurrency: concurrency,
+		fw:          fw,
 	}, nil
 }
 
 func (w *FileWatcherImpl) Watch() error {
+	defer w.watcherr.Close()
+	writeCh := w.fw.Start()
+
 	go func() {
 		for {
 			select {
 			case event := <-w.watcherr.Event:
 				if !event.FileInfo.IsDir() {
-					fmt.Println(event.FileInfo.Size())
-					fmt.Println(w.fw.Write(event.Path, int(event.FileInfo.Size())))
+					writeCh <- Stat{FilePath: event.Path, ByteSize: event.Size()}
 				}
-				fmt.Println(event)
-
 			case err := <-w.watcherr.Error:
 				fmt.Println(err)
 			case <-w.watcherr.Closed:
 				fmt.Println("closed")
-			default:
-				// do nothing
+				return
 			}
 		}
 	}()
-	w.watcherr.Start(1 * time.Second)
-	//w.watcherr.Wait()
-	return nil
+
+	return w.watcherr.Start(time.Second * 1)
 }
