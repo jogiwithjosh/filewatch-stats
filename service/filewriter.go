@@ -52,7 +52,6 @@ func (jw *JSONWriter) Start() chan Stat {
 
 func (jw *JSONWriter) receiveStat() {
 	for stat := range jw.writeCh {
-		fmt.Println("received", stat)
 		if err := jw.write(stat.FilePath, stat.ByteSize); err != nil {
 			fmt.Println(err)
 		}

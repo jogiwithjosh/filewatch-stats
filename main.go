@@ -14,6 +14,7 @@ func main() {
 	watchPath := flag.String("watchPath", "watch", "used to watch on the provided path")
 	storagePath := flag.String("storagePath", "storage/test.json", "used to store JSON files")
 	concurrency := flag.Int("conc", 1, "max no of file processors")
+	startClient := flag.Bool("auto-test", false, "to start file ops client ")
 	flag.Parse()
 
 	fmt.Println(*watchPath, *storagePath)
@@ -27,13 +28,17 @@ func main() {
 		panic(err)
 	}
 
-	go updateFile(filepath.Join(*watchPath, "test.json"), *concurrency)
-	go updateFile(filepath.Join(*watchPath, "test1.json"), *concurrency)
-	go updateFile(filepath.Join(*watchPath, "test2.json"), *concurrency)
+	if *startClient {
+		go startFileOps(filepath.Join(*watchPath, "test.json"), *concurrency)
+		go startFileOps(filepath.Join(*watchPath, "test1.json"), *concurrency)
+		go startFileOps(filepath.Join(*watchPath, "test2.json"), *concurrency)
+	}
+
 	watcher.Watch()
 }
 
-func updateFile(fp string, concurrency int) {
+// test client
+func startFileOps(fp string, concurrency int) {
 	time.Sleep(1 * time.Second)
 	counter := 1
 	go func() {
